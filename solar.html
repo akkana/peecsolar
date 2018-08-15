@@ -1,0 +1,155 @@
+<!doctype html>
+<html>
+
+<head>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<title>PEEC Solar Panels</title>
+<script src="JS/Chart.bundle.js"></script>
+<script src="JS/chart.utils.js"></script>
+<script src="JS/csv.js"></script>
+<script>
+
+//
+// The XMLHttpRequest to fetch the data from a CGI:
+//
+var xmlhttp = new XMLHttpRequest();
+
+// Firefox assumes all XMLHttpRequests are mime type XML, at least local files.
+// To avoid an error in the console you have to override it:
+if (xmlhttp.overrideMimeType) xmlhttp.overrideMimeType('text/plain');
+
+xmlhttp.onreadystatechange = function() {
+    if (this.readyState == 4 && this.status == 200) {
+        processCSV(this.responseText);
+    }
+};
+xmlhttp.open("GET", "/peecsolar/peecsolar.cgi", true);
+xmlhttp.send();
+
+//
+// The function called after the data has been fetched:
+//
+function processCSV(csvstring) {
+    var csvArray = CSVToArray(csvstring);
+    // Find indices for 'end_at' and 'powr'
+    numfields = csvArray[0].length;
+    for (var i=0; i < csvArray[0].length; ++i) {
+        if (csvArray[0][i] == 'end_at')
+            timeIndex = i;
+        else if (csvArray[0][i] == 'powr')
+            dataIndex = i;
+    }
+
+    var solardata = Array();
+    for (var i=1; i < csvArray.length; ++i) {
+        solardata.push({ "x": csvArray[i][timeIndex],
+                         "y": parseInt(csvArray[i][dataIndex]) })
+    }
+
+    //console.log("solardata:")
+    //console.dir(solardata);
+
+    plotsolar(solardata);
+}
+
+//
+// Do the actual plotting:
+//
+function plotsolar(solardata) {
+    if (window.solarchart && window.chartconfig) {
+        window.chartconfig.data.datasets[0].data = solardata;
+        window.solarchart.update();
+        return;
+    }
+
+    var ctx = document.getElementById('canvas').getContext('2d');
+
+    window.chartconfig = {
+        type: 'line',
+        data: {
+            datasets: [{
+                label: 'Solar Power',
+                backgroundColor: window.chartColors.purple,
+                borderColor: window.chartColors.blue,
+                data: solardata,
+                fill: false,
+            }]
+        },
+        options: {
+            responsive: true,
+            title: {
+                display: true,
+                text: 'PEEC Solar Power'
+            },
+            tooltips: {
+                mode: 'index',
+                intersect: false,
+            },
+            hover: {
+                mode: 'nearest',
+                intersect: true
+            },
+            scales: {
+                xAxes: [{
+                    type:       "time",
+                    time:       {
+                        //format: 'DD/MM/YYYY',
+                        tooltipFormat: 'll'
+                    },
+                    scaleLabel: {
+                        display:     true,
+                        labelString: 'Time'
+                    }
+                }],
+                yAxes: [{
+                    display: true,
+                    scaleLabel: {
+                        display: true,
+                        labelString: 'Power (Watts)'
+                    }
+                }]
+            }
+        }
+    };
+
+    window.solarchart = new Chart(ctx, window.chartconfig);
+};
+
+function setupButtons() {
+
+  document.getElementById('today').addEventListener('click', function() {
+    xmlhttp.open("GET", "/peecsolar/peecsolar.cgi", true);
+    xmlhttp.send();
+  });
+
+  document.getElementById('yesterday').addEventListener('click', function() {
+    xmlhttp.open("GET", "/peecsolar/peecsolar.cgi?when=yesterday", true);
+    xmlhttp.send();
+  });
+
+  document.getElementById('week').addEventListener('click', function() {
+    xmlhttp.open("GET", "/peecsolar/peecsolar.cgi?when=week", true);
+    xmlhttp.send();
+  });
+};
+</script>
+
+    <style>
+    canvas{
+        -moz-user-select: none;
+        -webkit-user-select: none;
+        -ms-user-select: none;
+    }
+    </style>
+</head>
+
+<body onload="setupButtons();">
+    <div style="width:75%;">
+        <canvas id="canvas"></canvas>
+    </div>
+    <br>
+    <button id="today">Today</button></body>
+    <button id="yesterday">Yesterday</button></body>
+    <button id="week">Current Week</button>
+
+</html>
