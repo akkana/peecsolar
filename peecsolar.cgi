@@ -1,4 +1,6 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
+
+from __future__ import print_function
 
 import json
 import csv
@@ -10,7 +12,7 @@ import cgi
 
 # While debugging the CGI:
 import cgitb
-# cgitb.enable()
+cgitb.enable()
 
 from cachefile import Cachefile
 
@@ -118,7 +120,7 @@ class EnphaseCacher(Cachefile):
                     continue
                 if '=' in line:
                     name, val = [ item.strip()
-                                  for item in line.split('=', maxsplit=1) ]
+                                  for item in line.split('=', 1) ]
                     self.apikeys[name] = val
 
         if not self.apikeys['system_id']:
